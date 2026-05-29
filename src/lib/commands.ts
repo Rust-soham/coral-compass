@@ -45,6 +45,37 @@ function coralErrorMessage(error: { message: string; stderr?: string }) {
   return `Coral query failed: ${error.message}${detail}`;
 }
 
+function firstLine(value: unknown, maxLength = 120) {
+  const line = String(value ?? "unknown").split("\n")[0] ?? "";
+  return line.length > maxLength ? `${line.slice(0, maxLength - 1)}...` : line;
+}
+
+function prList(rows: Record<string, unknown>[]) {
+  if (rows.length === 0) {
+    return "_No matching PRs._";
+  }
+
+  return rows
+    .map(
+      (row) =>
+        `#${row.number} ${firstLine(row.title)} by ${row.user__login ?? "unknown"}`
+    )
+    .join("\n");
+}
+
+function commitList(rows: Record<string, unknown>[]) {
+  if (rows.length === 0) {
+    return "_No commits returned._";
+  }
+
+  return rows
+    .map(
+      (row) =>
+        `${String(row.sha ?? "").slice(0, 7)} ${firstLine(row.commit__message)} by ${row.author__login ?? "unknown"}`
+    )
+    .join("\n");
+}
+
 export async function getCommandResponse(command: string) {
   if (!isKnownCommand(command)) {
     return `Unknown command \`${command}\`. Try \`/ping\`, \`/pulse\`, \`/blockers\`, \`/source-requests\`, or \`/release-risk\`.`;
@@ -55,12 +86,17 @@ export async function getCommandResponse(command: string) {
   }
 
   if (command === "/pulse") {
-    const [sources, eventCounts, tables] = await Promise.all([
+    const [sources, eventCounts, githubPulls, githubCommits] = await Promise.all([
       coralSourceList(),
       coralSql(
         "select type, count(*) as events from codex.events where year = 2026 and month = 5 and day = 29 group by type order by events desc limit 10"
       ),
-      coralSql("select schema_name, table_name, description from coral.tables order by schema_name, table_name")
+      coralSql(
+        "select number, title, user__login, updated_at from github.pulls where owner = 'withcoral' and repo = 'coral' and state = 'open' order by updated_at desc limit 5"
+      ),
+      coralSql(
+        "select sha, commit__message, author__login, commit__author__date from github.commits where owner = 'withcoral' and repo = 'coral' limit 3"
+      )
     ]);
 
     if (sources.isErr()) {
@@ -69,8 +105,11 @@ export async function getCommandResponse(command: string) {
     if (eventCounts.isErr()) {
       return coralErrorMessage(eventCounts.error);
     }
-    if (tables.isErr()) {
-      return coralErrorMessage(tables.error);
+    if (githubPulls.isErr()) {
+      return coralErrorMessage(githubPulls.error);
+    }
+    if (githubCommits.isErr()) {
+      return coralErrorMessage(githubCommits.error);
     }
 
     return [
@@ -83,8 +122,11 @@ export async function getCommandResponse(command: string) {
       "**Today From Coral `codex.events`**",
       table(eventCounts.value, ["type", "events"]),
       "",
-      "**Queryable Coral Tables**",
-      table(tables.value, ["schema_name", "table_name"])
+      "**Open `withcoral/coral` PRs via Coral GitHub Source**",
+      prList(githubPulls.value),
+      "",
+      "**Latest Commits via Coral GitHub Source**",
+      commitList(githubCommits.value)
     ].join("\n");
   }
 
@@ -123,12 +165,34 @@ export async function getCommandResponse(command: string) {
   }
 
   if (command === "/release-risk") {
+    const [openPrs, recentCommits] = await Promise.all([
+      coralSql(
+        "select number, title, user__login, updated_at, html_url from github.pulls where owner = 'withcoral' and repo = 'coral' and state = 'open' order by updated_at desc limit 8"
+      ),
+      coralSql(
+        "select sha, commit__message, author__login, commit__author__date, html_url from github.commits where owner = 'withcoral' and repo = 'coral' limit 5"
+      )
+    ]);
+
+    if (openPrs.isErr()) {
+      return coralErrorMessage(openPrs.error);
+    }
+    if (recentCommits.isErr()) {
+      return coralErrorMessage(recentCommits.error);
+    }
+
     return [
       "**Release Risk**",
       "",
-      "GitHub is the next source to connect. Once `GITHUB_TOKEN` is available, this command can query Coral's GitHub tables for recent PRs, issues, reviews, and cache/source-spec changes.",
+      "Evidence from Coral GitHub source for `withcoral/coral`.",
       "",
-      "For now, `/pulse` proves the Discord to Coral query loop is working."
+      "**Open PRs To Watch**",
+      prList(openPrs.value),
+      "",
+      "**Recent Commits**",
+      commitList(recentCommits.value),
+      "",
+      "Next signal to add: Discord support messages as a file-backed source, so this can correlate PRs with builder pain."
     ].join("\n");
   }
 

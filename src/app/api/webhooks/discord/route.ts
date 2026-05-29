@@ -1,3 +1,4 @@
+import { after } from "next/server";
 import { InteractionResponseType, InteractionType, verifyKey } from "discord-interactions";
 import { getCommandResponse } from "@/lib/commands";
 import { readEnv } from "@/lib/env";
@@ -39,8 +40,11 @@ export async function POST(request: Request): Promise<Response> {
   }
 
   const interaction = JSON.parse(rawBody) as {
+    application_id: string;
+    channel_id?: string;
     type: InteractionType;
     data?: { name?: string };
+    token?: string;
     member?: { user?: { username?: string } };
     user?: { username?: string };
   };
@@ -61,6 +65,26 @@ export async function POST(request: Request): Promise<Response> {
     user
   });
 
+  if (command !== "/ping") {
+    after(async () => {
+      const content = await getCommandResponse(command);
+      await postDiscordFollowup({
+        applicationId: interaction.application_id,
+        botToken: env.value.DISCORD_BOT_TOKEN,
+        channelId: interaction.channel_id,
+        content,
+        interactionToken: interaction.token
+      });
+    });
+
+    return Response.json({
+      type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+      data: {
+        content: `Running Coral queries for \`${command}\`...`
+      }
+    });
+  }
+
   const content = await getCommandResponse(command);
 
   return Response.json({
@@ -69,4 +93,87 @@ export async function POST(request: Request): Promise<Response> {
       content
     }
   });
+}
+
+async function postDiscordFollowup({
+  applicationId,
+  botToken,
+  channelId,
+  content,
+  interactionToken
+}: {
+  applicationId: string;
+  botToken: string;
+  channelId?: string;
+  content: string;
+  interactionToken?: string;
+}) {
+  const chunks = chunkDiscordMessage(content);
+  const firstChunk = chunks.shift();
+
+  if (interactionToken && firstChunk) {
+    const response = await fetch(
+      `https://discord.com/api/v10/webhooks/${applicationId}/${interactionToken}`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ content: firstChunk })
+      }
+    );
+
+    if (!response.ok) {
+      console.warn("[coral-compass] Discord followup failed", {
+        status: response.status,
+        body: await response.text()
+      });
+    }
+  }
+
+  if (!channelId) {
+    return;
+  }
+
+  for (const chunk of chunks) {
+    const response = await fetch(
+      `https://discord.com/api/v10/channels/${channelId}/messages`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bot ${botToken}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ content: chunk })
+      }
+    );
+
+    if (!response.ok) {
+      console.warn("[coral-compass] Discord channel post failed", {
+        status: response.status,
+        body: await response.text()
+      });
+    }
+  }
+}
+
+function chunkDiscordMessage(content: string) {
+  const limit = 1900;
+  const chunks: string[] = [];
+  let remaining = content;
+
+  while (remaining.length > limit) {
+    let splitAt = remaining.lastIndexOf("\n", limit);
+    if (splitAt < 1) {
+      splitAt = limit;
+    }
+    chunks.push(remaining.slice(0, splitAt));
+    remaining = remaining.slice(splitAt).trimStart();
+  }
+
+  if (remaining.length > 0) {
+    chunks.push(remaining);
+  }
+
+  return chunks;
 }

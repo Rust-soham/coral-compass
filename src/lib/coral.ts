@@ -21,7 +21,7 @@ export async function coralSql(query: string) {
       Result.tryPromise({
         try: () =>
           execFileAsync(coralBin, ["sql", "--format", "json", query], {
-            timeout: 10_000,
+            timeout: 30_000,
             maxBuffer: 1024 * 1024 * 4
           }),
         catch: (error) =>
