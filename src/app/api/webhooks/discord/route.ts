@@ -1,5 +1,5 @@
 import { InteractionResponseType, InteractionType, verifyKey } from "discord-interactions";
-import { commandCopy, isKnownCommand } from "@/lib/commands";
+import { getCommandResponse } from "@/lib/commands";
 import { readEnv } from "@/lib/env";
 
 export const runtime = "nodejs";
@@ -61,9 +61,7 @@ export async function POST(request: Request): Promise<Response> {
     user
   });
 
-  const content = isKnownCommand(command)
-    ? commandCopy[command]
-    : `Unknown command \`${command}\`. Try \`/ping\`, \`/pulse\`, \`/blockers\`, \`/source-requests\`, or \`/release-risk\`.`;
+  const content = await getCommandResponse(command);
 
   return Response.json({
     type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
