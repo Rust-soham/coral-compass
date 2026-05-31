@@ -4,7 +4,7 @@ import { z } from "zod";
 import { coralSql } from "@/lib/coral";
 import { readEnv } from "@/lib/env";
 
-const ASK_MODEL = "openai/gpt-5.4";
+const ASK_MODEL = "openai/gpt-5-nano";
 
 class AskError extends TaggedError("AskError")<{
   message: string;
