@@ -1,16 +1,80 @@
 # Coral Compass
 
-Coral Compass is a Discord-first agent shell for Coral product and community intelligence.
+Coral Compass is a Discord-first agent for turning community and product conversations into evidence-backed engineering work.
 
-The deployed v0 lets a Discord server ask Coral-backed questions and turn recent Discord context into evidence-backed GitHub issues.
+The v0 is live as a Discord slash-command bot. It lets a team ask Coral-backed questions from Discord, inspect GitHub activity through Coral, and turn recent Discord channel context into a GitHub issue.
 
-## Stack
+## Live Demo
 
-- Next.js on Vercel
-- Vercel Chat SDK
-- `@chat-adapter/discord`
-- `better-result` for typed recoverable errors
-- Discord HTTP interactions for slash commands
+Production endpoint:
+
+```text
+https://coral-hackathon-inky.vercel.app
+```
+
+Discord interactions endpoint:
+
+```text
+https://coral-hackathon-inky.vercel.app/api/webhooks/discord
+```
+
+Install link:
+
+```text
+https://discord.com/oauth2/authorize?client_id=1450425908719517707&permissions=311385230336&integration_type=0&scope=bot+applications.commands
+```
+
+## Why It Matters
+
+Discord is where users describe bugs, blockers, and feature requests. GitHub is where engineering teams actually do the work. Coral Compass connects those surfaces with Coral as the evidence layer, so a noisy chat thread can become a focused issue with repository context attached.
+
+The product is intentionally narrow:
+
+```text
+Discord conversation -> AI Gateway model -> Coral GitHub evidence -> GitHub issue -> Discord answer
+```
+
+## Core Workflow
+
+`/ask` answers questions using AI SDK tool calls against Coral SQL.
+
+Example:
+
+```text
+/ask question:what are the latest open PRs in withcoral/coral?
+```
+
+`/triage` turns recent Discord channel context into a GitHub issue.
+
+Example:
+
+```text
+/triage repo:Rust-soham/coral-compass
+```
+
+The triage command:
+
+- reads recent Discord messages from the channel
+- asks the AI Gateway model to draft a concise work item
+- queries Coral GitHub sources for related issues, recent PRs, and commits
+- creates a GitHub issue when `GITHUB_TOKEN` has repo issue access
+- replies in Discord with the issue link and evidence summary
+
+If GitHub issue creation is not configured, `/triage` returns a ready-to-file draft instead of failing.
+
+## Coral Usage
+
+Coral Compass uses Coral as the local SQL evidence layer for external product and engineering data.
+
+Current source usage:
+
+- `github.issues`: duplicate and related-work checks
+- `github.pulls`: recent pull request context
+- `github.commits`: recent implementation activity
+- `coral.tables` / `coral.columns`: source and schema introspection
+- `codex.events`: local agent/session signal where available
+
+The bot exposes Coral-backed tools to the AI SDK model, then returns compact Discord-native answers.
 
 ## Commands
 
@@ -24,7 +88,15 @@ The deployed v0 lets a Discord server ask Coral-backed questions and turn recent
 /release-risk
 ```
 
-`/ask`, `/pulse`, `/source-requests`, `/release-risk`, and `/triage` use Coral-backed evidence where the configured sources are available.
+## Stack
+
+- Next.js on Vercel
+- Discord HTTP interactions
+- AI SDK through Vercel AI Gateway
+- Coral CLI / Coral SQL
+- GitHub source spec
+- `better-result` for typed recoverable errors
+- `@chat-adapter/discord`
 
 ## Environment
 
@@ -42,11 +114,6 @@ DISCORD_PUBLIC_KEY=
 DISCORD_APPLICATION_ID=
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 AI_GATEWAY_API_KEY=
-```
-
-Required for `/triage` to create GitHub issues:
-
-```bash
 GITHUB_TOKEN=
 ```
 
@@ -59,58 +126,28 @@ DISCORD_MENTION_ROLE_IDS=
 
 ## Discord Setup
 
-To add the bot to a Discord server, open this install link:
-
-```text
-https://discord.com/oauth2/authorize?client_id=1450425908719517707&permissions=311385230336&integration_type=0&scope=bot+applications.commands
-```
-
-1. Create a Discord application in the Discord Developer Portal.
-2. Copy the Application ID into `DISCORD_APPLICATION_ID`.
-3. Copy the Public Key into `DISCORD_PUBLIC_KEY`.
-4. Create a bot token and set `DISCORD_BOT_TOKEN`.
-5. Set the Interactions Endpoint URL:
+Set the Discord Developer Portal interactions endpoint to:
 
 ```text
 https://YOUR_DOMAIN/api/webhooks/discord
 ```
 
-For local testing, expose the Next dev server with a tunnel:
+Register slash commands:
 
 ```bash
-ngrok http 3000
+pnpm discord:register
 ```
 
-Then use:
-
-```text
-https://YOUR_NGROK_DOMAIN/api/webhooks/discord
-```
-
-6. Invite the bot with these scopes:
+Install the bot with scopes:
 
 ```text
 bot
 applications.commands
 ```
 
-Use permissions for viewing channels, sending messages, reading message history, creating threads, sending messages in threads, adding reactions, and attaching files.
+Required permissions include viewing channels, sending messages, reading message history, creating threads, sending messages in threads, adding reactions, and attaching files.
 
-## Register Slash Commands
-
-After env vars are set:
-
-```bash
-pnpm discord:register
-```
-
-This registers the global Discord commands from `src/lib/commands.ts`.
-
-## Triage Workflow
-
-`/triage repo:owner/repo` turns recent Discord channel context into an evidence-backed GitHub issue. Coral checks related GitHub issues, PRs, and commits. If `GITHUB_TOKEN` is not set, the command returns the issue draft without creating it.
-
-## Development
+## Local Development
 
 ```bash
 pnpm install
@@ -123,18 +160,13 @@ Health check:
 http://localhost:3000/api/health
 ```
 
-## Verification
+Verification:
 
 ```bash
 pnpm typecheck
 pnpm build
 ```
 
-## Next Coral Milestone
+## V0 Deployment Note
 
-The intended Coral integration points:
-
-- `src/lib/commands.ts`: route slash commands to Coral query workflows
-- `coral/queries/*.sql`: keep the query layer visible and demoable
-- `data/*.jsonl` or Parquet: file-backed Discord/community/transcript fixtures
-- Coral GitHub/PostHog/File sources: join community pain, product usage, and repo activity
+The Discord Gateway listener is disabled for the Vercel Hobby deployment. The shipped v0 uses Discord HTTP interactions at `/api/webhooks/discord`, which is the path Discord verifies and calls for slash commands.
