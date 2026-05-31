@@ -17,6 +17,7 @@ This first milestone gets the Discord/Vercel bot surface working. Coral SQL, sou
 
 ```text
 /ping
+/ask
 /pulse
 /blockers
 /source-requests
@@ -40,6 +41,7 @@ DISCORD_BOT_TOKEN=
 DISCORD_PUBLIC_KEY=
 DISCORD_APPLICATION_ID=
 NEXT_PUBLIC_APP_URL=http://localhost:3000
+AI_GATEWAY_API_KEY=
 ```
 
 Optional for Gateway message/mention listening:

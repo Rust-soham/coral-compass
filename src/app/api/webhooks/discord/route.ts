@@ -43,7 +43,15 @@ export async function POST(request: Request): Promise<Response> {
     application_id: string;
     channel_id?: string;
     type: InteractionType;
-    data?: { name?: string };
+    data?: {
+      name?: string;
+      options?: Array<{
+        name: string;
+        type: number;
+        value?: string | number | boolean;
+        options?: Array<{ name: string; value?: string | number | boolean }>;
+      }>;
+    };
     token?: string;
     member?: { user?: { username?: string } };
     user?: { username?: string };
@@ -58,6 +66,7 @@ export async function POST(request: Request): Promise<Response> {
   }
 
   const command = `/${interaction.data?.name ?? ""}`;
+  const text = getInteractionText(interaction.data?.options);
   const user = interaction.member?.user?.username ?? interaction.user?.username ?? "unknown";
 
   console.info("[coral-compass] slash command received", {
@@ -67,7 +76,7 @@ export async function POST(request: Request): Promise<Response> {
 
   if (command !== "/ping") {
     after(async () => {
-      const content = await getCommandResponse(command);
+      const content = await getCommandResponse(command, text);
       await postDiscordFollowup({
         applicationId: interaction.application_id,
         botToken: env.value.DISCORD_BOT_TOKEN,
@@ -176,4 +185,37 @@ function chunkDiscordMessage(content: string) {
   }
 
   return chunks;
+}
+
+function getInteractionText(
+  options?: Array<{
+    name: string;
+    value?: string | number | boolean;
+    options?: Array<{ name: string; value?: string | number | boolean }>;
+  }>
+) {
+  if (!options?.length) {
+    return "";
+  }
+
+  const values: string[] = [];
+  const collect = (
+    items: Array<{
+      name: string;
+      value?: string | number | boolean;
+      options?: Array<{ name: string; value?: string | number | boolean }>;
+    }>
+  ) => {
+    for (const item of items) {
+      if (item.value !== undefined) {
+        values.push(String(item.value));
+      }
+      if (item.options) {
+        collect(item.options);
+      }
+    }
+  };
+
+  collect(options);
+  return values.join(" ");
 }

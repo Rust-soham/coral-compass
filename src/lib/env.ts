@@ -3,6 +3,7 @@ import { z } from "zod";
 import { EnvError } from "@/lib/errors";
 
 const envSchema = z.object({
+  AI_GATEWAY_API_KEY: z.string().optional(),
   CRON_SECRET: z.string().optional(),
   DISCORD_APPLICATION_ID: z.string().min(1),
   DISCORD_BOT_TOKEN: z.string().min(1),

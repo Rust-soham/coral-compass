@@ -15,6 +15,7 @@
     "@chat-adapter/discord": "^4.29.0",
     "@chat-adapter/state-memory": "^4.29.0",
     "@vercel/analytics": "^1.4.1",
+    "ai": "^6.0.193",
     "better-result": "^2.9.2",
     "chat": "^4.29.0",
     "discord-interactions": "^4.4.0",

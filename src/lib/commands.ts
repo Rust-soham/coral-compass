@@ -1,11 +1,19 @@
 import { Result } from "better-result";
 import type { SlashCommandEvent } from "chat";
+import { askCoral } from "@/lib/ai";
 import { coralSourceList, coralSql, table } from "@/lib/coral";
 import { DiscordCommandError } from "@/lib/errors";
 
-type CommandName = "/ping" | "/pulse" | "/blockers" | "/source-requests" | "/release-risk";
+type CommandName =
+  | "/ask"
+  | "/ping"
+  | "/pulse"
+  | "/blockers"
+  | "/source-requests"
+  | "/release-risk";
 
 const fallbackCopy: Record<CommandName, string> = {
+  "/ask": "Ask a question with `/ask question:<your question>`.",
   "/ping": "Coral Compass is online. Coral wiring comes next.",
   "/pulse": [
     "**Coral Compass Pulse**",
@@ -76,9 +84,25 @@ function commitList(rows: Record<string, unknown>[]) {
     .join("\n");
 }
 
-export async function getCommandResponse(command: string) {
+export async function getCommandResponse(command: string, text = "") {
   if (!isKnownCommand(command)) {
-    return `Unknown command \`${command}\`. Try \`/ping\`, \`/pulse\`, \`/blockers\`, \`/source-requests\`, or \`/release-risk\`.`;
+    return `Unknown command \`${command}\`. Try \`/ask\`, \`/ping\`, \`/pulse\`, \`/blockers\`, \`/source-requests\`, or \`/release-risk\`.`;
+  }
+
+  if (command === "/ask") {
+    const question = text.trim();
+    if (!question) {
+      return "Ask a question with `/ask question:<your question>`.";
+    }
+
+    const answer = await askCoral(question);
+    return answer.match({
+      ok: (value) => value,
+      err: (error) =>
+        error.cause instanceof Error
+          ? `${error.message}: ${error.cause.message}`
+          : error.message
+    });
   }
 
   if (command === "/ping") {
@@ -209,11 +233,11 @@ export async function handleSlashCommand(event: SlashCommandEvent) {
   const result = await Result.tryPromise({
     try: async () => {
       if (!isKnownCommand(event.command)) {
-        await event.channel.post(await getCommandResponse(event.command));
+        await event.channel.post(await getCommandResponse(event.command, event.text));
         return;
       }
 
-      await event.channel.post(await getCommandResponse(event.command));
+      await event.channel.post(await getCommandResponse(event.command, event.text));
       console.info("[coral-compass] slash command response posted", {
         command: event.command
       });
@@ -231,6 +255,18 @@ export async function handleSlashCommand(event: SlashCommandEvent) {
 }
 
 export const discordApplicationCommands = [
+  {
+    name: "ask",
+    description: "Ask Coral Compass about the Coral repo using Coral-backed tools",
+    options: [
+      {
+        name: "question",
+        description: "What do you want to know about Coral?",
+        type: 3,
+        required: true
+      }
+    ]
+  },
   {
     name: "ping",
     description: "Check whether Coral Compass is online"

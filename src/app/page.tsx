@@ -15,6 +15,7 @@ export default function Home() {
       </p>
       <pre className="overflow-x-auto rounded-md border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-800">
         {`/ping
+/ask
 /pulse
 /blockers
 /source-requests
