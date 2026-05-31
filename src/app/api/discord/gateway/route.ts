@@ -1,8 +1,5 @@
-import { after } from "next/server";
-import { getBotRuntime } from "@/lib/bot";
-
 export const runtime = "nodejs";
-export const maxDuration = 800;
+export const maxDuration = 10;
 
 export async function GET(request: Request): Promise<Response> {
   const cronSecret = process.env.CRON_SECRET;
@@ -15,30 +12,9 @@ export async function GET(request: Request): Promise<Response> {
     return new Response("Unauthorized", { status: 401 });
   }
 
-  const runtime = getBotRuntime();
-  if (runtime.isErr()) {
-    return Response.json(
-      {
-        ok: false,
-        error: runtime.error.message,
-        issues: runtime.error.issues
-      },
-      { status: 500 }
-    );
-  }
-
-  const host =
-    process.env.VERCEL_PROJECT_PRODUCTION_URL ??
-    process.env.VERCEL_URL ??
-    new URL(request.url).host;
-  const webhookUrl = `https://${host}/api/webhooks/discord`;
-
-  await runtime.value.bot.initialize();
-
-  return runtime.value.discordAdapter.startGatewayListener(
-    { waitUntil: (task: Promise<unknown>) => after(() => task) },
-    600 * 1000,
-    undefined,
-    webhookUrl
-  );
+  return Response.json({
+    ok: true,
+    status: "gateway_disabled",
+    message: "Discord slash commands use /api/webhooks/discord. Gateway listening is disabled for the v0 Vercel deployment."
+  });
 }

@@ -2,7 +2,7 @@
 
 Coral Compass is a Discord-first agent shell for Coral product and community intelligence.
 
-This first milestone gets the Discord/Vercel bot surface working. Coral SQL, source specs, and evidence-backed summaries come next.
+The deployed v0 lets a Discord server ask Coral-backed questions and turn recent Discord context into evidence-backed GitHub issues.
 
 ## Stack
 
@@ -11,7 +11,6 @@ This first milestone gets the Discord/Vercel bot surface working. Coral SQL, sou
 - `@chat-adapter/discord`
 - `better-result` for typed recoverable errors
 - Discord HTTP interactions for slash commands
-- Optional Discord Gateway route for mentions/messages
 
 ## Commands
 
@@ -25,7 +24,7 @@ This first milestone gets the Discord/Vercel bot surface working. Coral SQL, sou
 /release-risk
 ```
 
-Right now these commands return scaffolded responses. The next milestone is to connect each one to Coral-backed queries.
+`/ask`, `/pulse`, `/source-requests`, `/release-risk`, and `/triage` use Coral-backed evidence where the configured sources are available.
 
 ## Environment
 
@@ -51,7 +50,7 @@ Required for `/triage` to create GitHub issues:
 GITHUB_TOKEN=
 ```
 
-Optional for Gateway message/mention listening:
+Optional:
 
 ```bash
 CRON_SECRET=
@@ -59,6 +58,12 @@ DISCORD_MENTION_ROLE_IDS=
 ```
 
 ## Discord Setup
+
+To add the bot to a Discord server, open this install link:
+
+```text
+https://discord.com/oauth2/authorize?client_id=1450425908719517707&permissions=311385230336&integration_type=0&scope=bot+applications.commands
+```
 
 1. Create a Discord application in the Discord Developer Portal.
 2. Copy the Application ID into `DISCORD_APPLICATION_ID`.
@@ -89,7 +94,7 @@ bot
 applications.commands
 ```
 
-Use permissions for sending messages, creating threads, reading message history, adding reactions, and attaching files.
+Use permissions for viewing channels, sending messages, reading message history, creating threads, sending messages in threads, adding reactions, and attaching files.
 
 ## Register Slash Commands
 
