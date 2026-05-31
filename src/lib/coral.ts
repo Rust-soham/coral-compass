@@ -15,13 +15,13 @@ type CoralRow = Record<string, unknown>;
 
 const coralBin = process.env.CORAL_BIN ?? `${process.env.HOME}/.local/bin/coral`;
 
-export async function coralSql(query: string) {
+export async function coralSql(query: string, options: { timeoutMs?: number } = {}) {
   return Result.gen(async function* () {
     const { stdout } = yield* Result.await(
       Result.tryPromise({
         try: () =>
           execFileAsync(coralBin, ["sql", "--format", "json", query], {
-            timeout: 30_000,
+            timeout: options.timeoutMs ?? 30_000,
             maxBuffer: 1024 * 1024 * 4
           }),
         catch: (error) =>

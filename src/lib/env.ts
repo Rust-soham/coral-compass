@@ -9,6 +9,7 @@ const envSchema = z.object({
   DISCORD_BOT_TOKEN: z.string().min(1),
   DISCORD_MENTION_ROLE_IDS: z.string().optional(),
   DISCORD_PUBLIC_KEY: z.string().min(1),
+  GITHUB_TOKEN: z.string().optional(),
   NEXT_PUBLIC_APP_URL: z.string().url().default("http://localhost:3000")
 });
 

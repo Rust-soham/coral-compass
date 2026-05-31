@@ -18,6 +18,7 @@ This first milestone gets the Discord/Vercel bot surface working. Coral SQL, sou
 ```text
 /ping
 /ask
+/triage
 /pulse
 /blockers
 /source-requests
@@ -42,6 +43,12 @@ DISCORD_PUBLIC_KEY=
 DISCORD_APPLICATION_ID=
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 AI_GATEWAY_API_KEY=
+```
+
+Required for `/triage` to create GitHub issues:
+
+```bash
+GITHUB_TOKEN=
 ```
 
 Optional for Gateway message/mention listening:
@@ -93,6 +100,10 @@ pnpm discord:register
 ```
 
 This registers the global Discord commands from `src/lib/commands.ts`.
+
+## Triage Workflow
+
+`/triage repo:owner/repo` turns recent Discord channel context into an evidence-backed GitHub issue. Coral checks related GitHub issues, PRs, and commits. If `GITHUB_TOKEN` is not set, the command returns the issue draft without creating it.
 
 ## Development
 

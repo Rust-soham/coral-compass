@@ -3,10 +3,12 @@ import type { SlashCommandEvent } from "chat";
 import { askCoral } from "@/lib/ai";
 import { coralSourceList, coralSql, table } from "@/lib/coral";
 import { DiscordCommandError } from "@/lib/errors";
+import { triageDiscordThread, type DiscordContextMessage } from "@/lib/triage";
 
 type CommandName =
   | "/ask"
   | "/ping"
+  | "/triage"
   | "/pulse"
   | "/blockers"
   | "/source-requests"
@@ -15,6 +17,7 @@ type CommandName =
 const fallbackCopy: Record<CommandName, string> = {
   "/ask": "Ask a question with `/ask question:<your question>`.",
   "/ping": "Coral Compass is online. Coral wiring comes next.",
+  "/triage": "Turn recent Discord context into a Coral-backed GitHub issue with `/triage repo:owner/repo`.",
   "/pulse": [
     "**Coral Compass Pulse**",
     "",
@@ -84,9 +87,13 @@ function commitList(rows: Record<string, unknown>[]) {
     .join("\n");
 }
 
-export async function getCommandResponse(command: string, text = "") {
+export async function getCommandResponse(
+  command: string,
+  text = "",
+  options: { discordMessages?: DiscordContextMessage[] } = {}
+) {
   if (!isKnownCommand(command)) {
-    return `Unknown command \`${command}\`. Try \`/ask\`, \`/ping\`, \`/pulse\`, \`/blockers\`, \`/source-requests\`, or \`/release-risk\`.`;
+    return `Unknown command \`${command}\`. Try \`/ask\`, \`/ping\`, \`/triage\`, \`/pulse\`, \`/blockers\`, \`/source-requests\`, or \`/release-risk\`.`;
   }
 
   if (command === "/ask") {
@@ -107,6 +114,26 @@ export async function getCommandResponse(command: string, text = "") {
 
   if (command === "/ping") {
     return fallbackCopy[command];
+  }
+
+  if (command === "/triage") {
+    const repoSlug = text.trim();
+    if (!repoSlug) {
+      return "Turn recent Discord context into work with `/triage repo:owner/repo`.";
+    }
+
+    const result = await triageDiscordThread({
+      discordMessages: options.discordMessages ?? [],
+      repoSlug
+    });
+
+    return result.match({
+      ok: (value) => value,
+      err: (error) =>
+        error.cause instanceof Error
+          ? `${error.message}: ${error.cause.message}`
+          : error.message
+    });
   }
 
   if (command === "/pulse") {
@@ -270,6 +297,18 @@ export const discordApplicationCommands = [
   {
     name: "ping",
     description: "Check whether Coral Compass is online"
+  },
+  {
+    name: "triage",
+    description: "Turn recent Discord context into a Coral-backed GitHub issue",
+    options: [
+      {
+        name: "repo",
+        description: "GitHub repo to file work in, as owner/repo",
+        type: 3,
+        required: true
+      }
+    ]
   },
   {
     name: "pulse",

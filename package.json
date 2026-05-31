@@ -20,6 +20,7 @@
     "chat": "^4.29.0",
     "discord-interactions": "^4.4.0",
     "dotenv": "^17.2.3",
+    "evlog": "^2.18.1",
     "next": "^16.2.1",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
